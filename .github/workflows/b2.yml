@@ -1,0 +1,33 @@
+name: Ubuntu RDP Session
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ubuntu_rdp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Desktop Environment and XRDP
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xfce4 xfce4-goodies xrdp
+          echo "xfce4-session" > ~/.xsession
+          sudo service xrdp restart
+
+      - name: Set User Password
+        run: |
+          echo "runner:SecurePass123!" | sudo chpasswd
+
+      - name: Install Cloudflared
+        run: |
+          curl -L -o cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared.deb
+
+      - name: Expose RDP Port
+        run: |
+          cloudflared tunnel --url rdp://localhost:3389 &
+
+      - name: Keep Runner Active
+        run: |
+          echo "Ubuntu RDP Active. Check the Expose step for your tunnel address."
+          sleep 21600
