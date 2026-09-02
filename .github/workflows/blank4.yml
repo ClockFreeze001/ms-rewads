@@ -1,0 +1,38 @@
+name: Ubuntu Browser Desktop (noVNC)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ubuntu_browser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Desktop, VNC, and noVNC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xfce4 xfce4-goodies xvfb x11vnc novnc websockify
+
+      - name: Start Virtual Display and XFCE
+        run: |
+          Xvfb :99 -screen 0 1280x1024x24 &
+          sleep 2
+          DISPLAY=:99 dbus-launch xfce4-session &
+
+      - name: Launch VNC and Web Gateway
+        run: |
+          x11vnc -display :99 -forever -shared -nopw -rfbport 5900 &
+          websockify --web /usr/share/novnc 6080 localhost:5900 &
+
+      - name: Install Cloudflared
+        run: |
+          curl -L -o cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared.deb
+
+      - name: Expose Web Desktop
+        run: |
+          cloudflared tunnel --url http://localhost:6080 &
+
+      - name: Keep Runner Active
+        run: |
+          echo "Ubuntu Browser Desktop Active."
+          sleep 21600
