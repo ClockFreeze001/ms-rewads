@@ -1,0 +1,32 @@
+name: Browser RDP Session
+
+on:
+  workflow_dispatch:
+
+jobs:
+  browser_rdp:
+    runs-on: windows-latest
+    steps:
+      - name: Enable Remote Desktop
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+      - name: Start Web Gateway
+        run: |
+          npm install meshcentral
+          Start-Process -FilePath "npx" -ArgumentList "meshcentral --port 8080 --noagent"
+
+      - name: Install Cloudflared
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.msi" -OutFile "cloudflared.msi"
+          Start-Process msiexec.exe -ArgumentList '/i cloudflared.msi /quiet' -Wait
+
+      - name: Expose Browser Interface
+        run: |
+          Start-Process -FilePath "C:\Program Files (x86)\cloudflared\cloudflared.exe" -ArgumentList "tunnel --url http://localhost:8080"
+
+      - name: Keep Runner Active
+        run: |
+          Write-Host "Browser RDP Active. Check the Cloudflare step logs for your web link."
+          Start-Sleep -Seconds 14400
