@@ -1,0 +1,53 @@
+name: VNC Debug Workflow
+
+on:
+  workflow_dispatch: # Allows you to trigger this manually from the Actions tab
+
+jobs:
+  vnc-session:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Desktop Environment and VNC tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xfce4 xfce4-goodies x11vnc xvfb curl
+
+      - name: Setup Ngrok
+        run: |
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt-get update && sudo apt-get install -y ngrok
+          # Set your Ngrok auth token from GitHub Secrets
+          ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+
+      - name: Start Virtual Display and VNC Server
+        run: |
+          # Start Xvfb on display :99
+          Xvfb :99 -screen 0 1280x720x24 &
+          export DISPLAY=:99
+          
+          # Start XFCE desktop environment in the background
+          startxfce4 &
+          
+          # Set a password for VNC (optional, or run without password using -nopw)
+          mkdir -p ~/.vnc
+          x11vnc -storepasswd "your_password_here" ~/.vnc/passwd
+          
+          # Start x11vnc connected to display :99
+          x11vnc -display :99 -usepw -forever -bg -o ~/.vnc/x11vnc.log
+
+      - name: Start Ngrok Tunnel and Keep Workflow Alive
+        run: |
+          # Start ngrok tcp tunnel for VNC default port 5900
+          ngrok tcp 5900 &
+          
+          echo "===================================================="
+          echo "VNC server is running!"
+          echo "Check the ngrok URL above or keep this workflow open."
+          echo "===================================================="
+          
+          # Keep the workflow alive for 30 minutes so you can connect
+          sleep 1800
