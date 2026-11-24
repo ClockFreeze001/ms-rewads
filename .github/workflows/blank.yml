@@ -19,13 +19,22 @@ jobs:
 
       - name: Install Cloudflared
         run: |
-          Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.msi" -OutFile "cloudflared.msi"
-          Start-Process msiexec.exe -ArgumentList '/i cloudflared.msi /quiet' -Wait
+          steps:
+      - name: Download
+      run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
+      - name: Extract
+      run: Expand-Archive ngrok.zip
+      - name: Auth
+      run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+      - name: Enable TS
 
       - name: Expose Browser Interface
         run: |
-          Start-Process -FilePath "C:\Program Files (x86)\cloudflared\cloudflared.exe" -ArgumentList "tunnel --url http://localhost:8080"
-
+         - name: Create Tunnel
+      run: .\ngrok\ngrok.exe tcp 8000
+         
       - name: Keep Runner Active
         run: |
           Write-Host "Browser RDP Active. Check the Cloudflare step logs for your web link."
